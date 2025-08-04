@@ -1,0 +1,29 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Log in to GitHub Container Registry
+      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+    - name: Build and push Docker image
+      run: |
+        docker build -t ghcr.io/${{ github.repository }}:latest ./app
+        docker push ghcr.io/${{ github.repository }}:latest
+
+    - name: Update image reference in manifest (optional)
+      run: |
+        sed -i 's|image: .*|image: ghcr.io/${{ github.repository }}:latest|' ./manifests/deployment.yaml
+        git config --global user.email "ci@example.com"
+        git config --global user.name "GitHub Actions"
+        git commit -am "Update image version"
+        git push || echo "No changes to commit"
